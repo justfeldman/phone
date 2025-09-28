@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Finchild – Wallet & Goals</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<style>
+  :root{
+    --bg:#ffffff; --fg:#0f172a; --muted:#6b7280; --card:#f8fafc; --line:#e5e7eb;
+    --primary:#2563eb; --danger:#ef4444; --success:#16a34a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0b0f18; --fg:#e5e7eb; --muted:#9aa3b2; --card:#121826; --line:#1f2937; }
+  }
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--fg); -webkit-text-size-adjust:100%;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+             max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  }
+  h1{margin:0 0 12px; font-size: clamp(20px, 4.5vw, 28px)}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin:12px 0}
+  .row{display:flex; gap:12px; flex-wrap:wrap}
+  input{font-size:16px; padding:14px 12px; border-radius:12px; border:1px solid var(--line); background:transparent; color:var(--fg); flex:1 1 160px}
+  button{font-size:16px; padding:14px 18px; border-radius:12px; border:none; min-height:44px}
+  .btn{background:var(--primary); color:#fff}
+  .btn-danger{background:var(--danger); color:#fff}
+  .goal{display:flex; justify-content:space-between; align-items:center; gap:12px; margin:10px 0}
+  .bar{height:12px; background:#e5e7eb; border-radius:8px; overflow:hidden}
+  .fill{height:100%; background:var(--success)}
+  .muted{color:var(--muted)}
+  .footer-space{height:max(8px,env(safe-area-inset-bottom))}
+</style>
+</head>
+<body>
+  <h1>💳 Wallet & Goals</h1>
+
+  <div class="card">
+    <h3 style="margin:0 0 8px">Balance: $<span id="bal">0.00</span></h3>
+    <div class="row">
+      <a href="child.html" style="text-decoration:none"><button class="btn">Back to Chores</button></a>
+      <button class="btn-danger" id="clearGoals">Clear Goals</button>
+    </div>
+    <p class="muted" id="msg"></p>
+  </div>
+
+  <div class="card">
+    <h3>Add goal</h3>
+    <div class="row">
+      <input id="gname" placeholder="e.g., Headphones">
+      <input id="gtarget" type="number" step="0.01" placeholder="Target (e.g., 100.00)">
+      <button class="btn" id="addGoal">Add</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Your goals</h3>
+    <div id="goals"></div>
+  </div>
+
+  <div class="card">
+    <h3>History</h3>
+    <div id="history" class="muted" style="font-size:15px"></div>
+  </div>
+
+  <div class="footer-space"></div>
+
+<script>
+const KEY_BAL="finchild_wallet", KEY_GOALS="finchild_goals", KEY_HISTORY="finchild_history";
+const $=s=>document.querySelector(s);
+
+function balance(){ return parseFloat(localStorage.getItem(KEY_BAL)||"0"); }
+function setBalance(x){ localStorage.setItem(KEY_BAL, String(Number(x).toFixed(2))); }
+function goals(){ return JSON.parse(localStorage.getItem(KEY_GOALS)||"[]"); }
+function saveGoals(g){ localStorage.setItem(KEY_GOALS, JSON.stringify(g)); }
+function historyLog(){ return JSON.parse(localStorage.getItem(KEY_HISTORY)||"[]"); }
+function pushHistory(evt){ const h=historyLog(); h.unshift({...evt, at:new Date().toISOString()}); localStorage.setItem(KEY_HISTORY, JSON.stringify(h.slice(0,100))); }
+
+function note(t){ $("#msg").textContent=t; setTimeout(()=>$("#msg").textContent="",1500); }
+
+function addGoal(){
+  const name=$("#gname").value.trim();
+  const tgt=parseFloat($("#gtarget").value||"0");
+  if(!name || isNaN(tgt) || tgt<=0) return note("Enter name + positive target.");
+  const g=goals(); g.push({id:crypto.randomUUID(), name, target:parseFloat(tgt.toFixed(2)), saved:0}); saveGoals(g);
+  $("#gname").value=""; $("#gtarget").value=""; render(); note("Goal added ✅");
+}
+
+function allocate(id){
+  const amt=parseFloat(prompt("How much to allocate to this goal?")||"0");
+  if(isNaN(amt) || amt<=0) return;
+  if(amt>balance()) return alert("Not enough balance.");
+  const g=goals(); const i=g.findIndex(x=>x.id===id); if(i<0) return;
+  g[i].saved = parseFloat((g[i].saved + amt).toFixed(2)); saveGoals(g);
+  setBalance(balance()-amt);
+  pushHistory({type:"allocate", goal:g[i].name, amount:amt});
+  render();
+}
+
+function removeGoal(id){
+  if(!confirm("Delete this goal?")) return;
+  const g=goals().filter(x=>x.id!==id); saveGoals(g); render();
+}
+
+function clearGoals(){ if(confirm("Clear all goals?")){ saveGoals([]); render(); } }
+
+function render(){
+  $("#bal").textContent = balance().toFixed(2);
+  const wrap=$("#goals"); wrap.innerHTML="";
+  goals().forEach(g=>{
+    const pct = Math.min(100, Math.round((g.saved/g.target)*100 || 0));
+    const div=document.createElement("div"); div.className="goal";
+    div.innerHTML = `
+      <div style="flex:1">
+        <div><b>${escapeHtml(g.name)}</b> — $${g.saved.toFixed(2)} / $${g.target.toFixed(2)} (${pct}%)</div>
+        <div class="bar"><div class="fill" style="width:${pct}%"></div></div>
+      </div>
+      <div style="display:flex; gap:8px">
+        <button class="btn" onclick="allocate('${g.id}')">Allocate</button>
+        <button class="btn-danger" onclick="removeGoal('${g.id}')">Delete</button>
+      </div>`;
+    wrap.appendChild(div);
+  });
+
+  const hist=historyLog();
+  $("#history").innerHTML = hist.length
+    ? "<ul style='margin:0;padding-left:16px'>" + hist.map(h=>`<li>${formatEvt(h)}</li>`).join("") + "</ul>"
+    : "No history yet.";
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m])); }
+function formatEvt(h){
+  const dt = new Date(h.at).toLocaleString();
+  if(h.type==="allocate") return `${dt}: Allocated $${Number(h.amount).toFixed(2)} to “${escapeHtml(h.goal)}”`;
+  if(h.type==="credit") return `${dt}: +$${Number(h.amount).toFixed(2)} credited (chore reward)`;
+  return `${dt}: ${escapeHtml(h.type||"event")}`;
+}
+
+/* bridge: credit history when chores completed (from child.html) */
+if(!historyLog().length){
+  // no-op placeholder; child.html will push credits
+}
+
+/* bindings */
+$("#addGoal").onclick = addGoal;
+$("#clearGoals").onclick = clearGoals;
+
+render();
+</script>
+</body>
+</html>
