@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Finchild – My Chores</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<style>
+  :root{
+    --bg:#ffffff; --fg:#0f172a; --muted:#6b7280; --card:#f8fafc; --line:#e5e7eb; --primary:#2563eb; --success:#16a34a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0b0f18; --fg:#e5e7eb; --muted:#9aa3b2; --card:#121826; --line:#1f2937; }
+  }
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--fg); -webkit-text-size-adjust:100%;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+             max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  }
+  h1{margin:0 0 12px; font-size: clamp(20px, 4.5vw, 28px)}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin:12px 0}
+  .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+  button{font-size:16px; padding:14px 18px; border-radius:12px; border:none; min-height:44px}
+  .btn-primary{background:var(--primary); color:#fff}
+  .btn-done{background:var(--success); color:#fff}
+  table{width:100%; border-collapse:collapse; font-size:16px}
+  th,td{padding:12px 8px; border-bottom:1px solid var(--line)}
+  .footer-space{height:max(8px,env(safe-area-inset-bottom))}
+</style>
+</head>
+<body>
+  <h1>🧒 Finchild — My Chores</h1>
+
+  <div class="card">
+    <div class="row">
+      <div><b>Wallet:</b> $<span id="bal">0.00</span></div>
+      <a href="wallet.html" style="text-decoration:none"><button class="btn-primary">Wallet & Goals</button></a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 8px">To do</h3>
+    <table>
+      <thead><tr><th>Task</th><th>Reward</th><th></th></tr></thead>
+      <tbody id="todo"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 8px">Completed</h3>
+    <table>
+      <thead><tr><th>Task</th><th>Reward</th></tr></thead>
+      <tbody id="done"></tbody>
+    </table>
+  </div>
+
+  <div class="footer-space"></div>
+
+<script>
+const KEY_CHORES="finchild_chores", KEY_BAL="finchild_wallet";
+const $=s=>document.querySelector(s);
+function chores(){ return JSON.parse(localStorage.getItem(KEY_CHORES)||"[]"); }
+function saveChores(x){ localStorage.setItem(KEY_CHORES, JSON.stringify(x)); }
+function balance(){ return parseFloat(localStorage.getItem(KEY_BAL)||"0"); }
+function setBalance(x){ localStorage.setItem(KEY_BAL, String(Number(x).toFixed(2))); }
+
+function complete(id){
+  const cs=chores(); const i=cs.findIndex(c=>c.id===id); if(i<0) return;
+  if(!cs[i].completed){
+    cs[i].completed=true;
+    setBalance(balance()+parseFloat(cs[i].reward));
+  }
+  saveChores(cs); render();
+}
+
+function render(){
+  $("#bal").textContent = balance().toFixed(2);
+  const todo=$("#todo"), done=$("#done"); todo.innerHTML=done.innerHTML="";
+  chores().forEach(c=>{
+    if(!c.completed){
+      const tr=document.createElement("tr");
+      tr.innerHTML=`<td>${escapeHtml(c.task)}</td><td>$${Number(c.reward).toFixed(2)}</td>
+        <td><button class="btn-done" onclick="complete('${c.id}')">Mark done</button></td>`;
+      todo.appendChild(tr);
+    }else{
+      const tr=document.createElement("tr");
+      tr.innerHTML=`<td>${escapeHtml(c.task)}</td><td>$${Number(c.reward).toFixed(2)}</td>`;
+      done.appendChild(tr);
+    }
+  });
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m])); }
+
+render();
+</script>
+</body>
+</html>
