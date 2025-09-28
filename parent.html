@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Finchild – Parent</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<style>
+  :root{
+    --bg: #ffffff; --fg: #0f172a; --muted:#6b7280; --card:#f8fafc; --line:#e5e7eb;
+    --primary:#2563eb; --danger:#ef4444; --success:#16a34a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0b0f18; --fg:#e5e7eb; --muted:#9aa3b2; --card:#121826; --line:#1f2937; }
+  }
+  html,body{height:100%}
+  body{
+    margin:0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background:var(--bg); color:var(--fg); -webkit-text-size-adjust:100%;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+             max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  }
+  h1{margin:0 0 12px; font-size: clamp(20px, 4.5vw, 28px)}
+  h3{margin:0 0 8px; font-size: clamp(18px, 4vw, 22px)}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin:12px 0}
+  .row{display:flex; gap:12px; flex-wrap:wrap}
+  input[type="text"], input[type="number"], input[type="password"]{
+    font-size:16px; /* prevents iOS zoom */
+    padding:14px 12px; border-radius:12px; border:1px solid var(--line); background:transparent; color:var(--fg); flex:1 1 160px;
+  }
+  button{
+    font-size:16px; padding:14px 18px; border-radius:12px; border:none; background:var(--primary); color:#fff; flex:0 0 auto;
+    min-height:44px; /* Apple HIG tap target */
+  }
+  .btn-danger{background:var(--danger)}
+  .btn-ghost{background:transparent; color:var(--fg); border:1px solid var(--line)}
+  table{width:100%; border-collapse:collapse; font-size:16px}
+  th,td{padding:12px 8px; border-bottom:1px solid var(--line)}
+  .muted{color:var(--muted)}
+  .footer-space{height: max(8px, env(safe-area-inset-bottom))}
+  .pin-gate{display:none}
+  .pin-gate.active{display:block}
+  .app{display:none}
+  .app.active{display:block}
+</style>
+</head>
+<body>
+  <h1>👨‍👩‍👧 Finchild — Parent</h1>
+
+  <!-- PIN gate -->
+  <div id="pinGate" class="card pin-gate active">
+    <h3>Parent PIN</h3>
+    <div class="row">
+      <input id="pinInput" type="password" inputmode="numeric" placeholder="Enter 4–6 digit PIN">
+      <button id="pinBtn">Unlock</button>
+    </div>
+    <p class="muted" id="pinMsg"></p>
+    <div class="row" style="margin-top:8px">
+      <button class="btn-ghost" id="setPinBtn">Set/Change PIN</button>
+    </div>
+  </div>
+
+  <!-- App content -->
+  <div id="app" class="app">
+    <div class="card">
+      <h3>Add a chore</h3>
+      <div class="row">
+        <input id="task" type="text" placeholder="e.g., Clean room">
+        <input id="reward" type="number" step="0.01" placeholder="Reward (e.g., 5.00)">
+        <button id="addBtn">Add</button>
+      </div>
+      <p class="muted" id="msg"></p>
+    </div>
+
+    <div class="card">
+      <h3>Chore list</h3>
+      <table>
+        <thead><tr><th>Task</th><th>Reward</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="row" style="margin-top:12px">
+        <button class="btn-danger" id="resetBtn">Reset All</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-space"></div>
+
+<script>
+const KEY_CHORES="finchild_chores", KEY_PIN="finchild_parent_pin";
+const $ = s=>document.querySelector(s);
+
+function loadChores(){ return JSON.parse(localStorage.getItem(KEY_CHORES)||"[]"); }
+function saveChores(x){ localStorage.setItem(KEY_CHORES, JSON.stringify(x)); }
+function note(t){ $("#msg").textContent=t; setTimeout(()=>$("#msg").textContent="",1500); }
+
+function render(){
+  const tbody = $("#tbody"); tbody.innerHTML="";
+  loadChores().forEach(c=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML = `
+      <td>${escapeHtml(c.task)}</td>
+      <td>$${Number(c.reward).toFixed(2)}</td>
+      <td>${c.completed?"✅ Done":"⏳ Pending"}</td>
+      <td>
+        <button class="btn-ghost" onclick="toggleComplete('${c.id}')">${c.completed?"Undo":"Mark done"}</button>
+        <button class="btn-danger" onclick="removeChore('${c.id}')">Delete</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function addChore(){
+  const task=$("#task").value.trim();
+  const reward=parseFloat($("#reward").value||"0");
+  if(!task || isNaN(reward) || reward<=0){ note("Enter task + positive reward"); return; }
+  const chores=loadChores();
+  chores.push({id:crypto.randomUUID(), task, reward:parseFloat(reward.toFixed(2)), completed:false});
+  saveChores(chores); $("#task").value=""; $("#reward").value=""; render(); note("Chore added ✅");
+}
+
+function toggleComplete(id){
+  const chores=loadChores();
+  const i=chores.findIndex(c=>c.id===id); if(i<0) return;
+  chores[i].completed=!chores[i].completed; saveChores(chores); render();
+}
+
+function removeChore(id){
+  const chores=loadChores().filter(c=>c.id!==id); saveChores(chores); render();
+}
+
+function wipeAll(){ if(confirm("Reset all chores?")){ saveChores([]); render(); } }
+
+function escapeHtml(s){ return s.replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m])); }
+
+function hasPin(){ return !!localStorage.getItem(KEY_PIN); }
+function unlockWithPin(){
+  const expected = localStorage.getItem(KEY_PIN) || "";
+  const entered = $("#pinInput").value.trim();
+  if(!expected){ $("#pinMsg").textContent="No PIN set. Tap 'Set/Change PIN'."; return; }
+  if(entered && entered===expected){ openApp(); } else { $("#pinMsg").textContent="Wrong PIN."; }
+}
+function setOrChangePin(){
+  const newPin = prompt("Set a 4–6 digit PIN:");
+  if(!newPin || !/^[0-9]{4,6}$/.test(newPin)) return alert("PIN must be 4–6 digits.");
+  localStorage.setItem(KEY_PIN, newPin); $("#pinMsg").textContent="PIN saved ✅";
+}
+function openApp(){
+  $("#pinGate").classList.remove("active");
+  $("#app").classList.add("active");
+  render();
+}
+
+/* bindings */
+$("#addBtn").onclick = addChore;
+$("#resetBtn").onclick = wipeAll;
+$("#pinBtn").onclick = unlockWithPin;
+$("#setPinBtn").onclick = setOrChangePin;
+
+/* auto-unlock if no PIN set */
+if(!hasPin()){ openApp(); }
+</script>
+</body>
+</html>
