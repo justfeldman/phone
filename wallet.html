@@ -2,14 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>West-Kids — Wallet & Goals</title>
+<title>Wallet</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <meta name="color-scheme" content="light dark" />
 <style>
-  :root{ --brand:#e60000; --bg:#fff; --fg:#0f172a; --muted:#667085; --card:#f9fafb; --line:#e5e7eb; --ok:#16a34a; --danger:#ef4444; }
+  :root{ --brand:#e60000; --bg:#fff; --fg:#0f172a; --muted:#667085; --card:#f9fafb; --line:#e5e7eb; }
   @media (prefers-color-scheme: dark){
     :root{ --bg:#0b0f18; --fg:#e5e7eb; --muted:#98a2b3; --card:#111827; --line:#1f2937; }
   }
+  html,body{height:100%}
   body{
     margin:0; background:var(--bg); color:var(--fg);
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -17,18 +18,6 @@
     padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right))
             calc(80px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
   }
-  h1{margin:0 0 12px; font-size:clamp(20px,4.5vw,28px)}
-  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin:12px 0}
-  .row{display:flex; gap:10px; flex-wrap:wrap}
-  input{font-size:16px; padding:14px 12px; border-radius:12px; border:1px solid var(--line); background:transparent; color:var(--fg); flex:1 1 160px}
-  button{font-size:16px; padding:14px 18px; border-radius:12px; border:none; min-height:44px; cursor:pointer}
-  .btn{background:var(--brand); color:#fff}
-  .btn-danger{background:var(--danger); color:#fff}
-  .balance{font-size:32px; font-weight:800; color:var(--brand); text-align:center}
-  .goal{display:flex; gap:12px; align-items:center; justify-content:space-between; margin:10px 0}
-  .bar{height:12px; background:#e5e7eb; border-radius:8px; overflow:hidden; flex:1}
-  .fill{height:100%; background:var(--brand)}
-  .muted{color:var(--muted)}
   /* tabs */
   .tabs{position:fixed;left:0;right:0;bottom:0;display:flex;gap:10px;justify-content:space-between;
         padding:10px max(16px,env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
@@ -39,104 +28,15 @@
 </style>
 </head>
 <body>
-  <h1>💳 West-Kids — Wallet & Goals</h1>
 
-  <div class="card">
-    <div class="balance">$<span id="bal">0.00</span></div>
-    <div class="row" style="margin-top:10px">
-      <a href="child.html" style="text-decoration:none"><button class="btn">Back to Chores</button></a>
-      <button class="btn-danger" id="clearGoals">Clear Goals</button>
-    </div>
-    <p class="muted" id="msg"></p>
-  </div>
-
-  <div class="card">
-    <h3 style="margin:0 0 8px">Add goal</h3>
-    <div class="row">
-      <input id="gname" placeholder="🎯 Goal name (e.g., Headphones)" />
-      <input id="gtarget" type="number" step="0.01" placeholder="💰 Target (e.g., 100.00)" />
-      <button class="btn" id="addGoal">Add</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h3 style="margin:0 0 8px">Your goals</h3>
-    <div id="goals"></div>
-  </div>
-
-  <div class="card">
-    <h3 style="margin:0 0 8px">History</h3>
-    <div id="history" class="muted" style="font-size:15px">No history yet.</div>
-  </div>
+  <!-- empty page content -->
 
   <!-- bottom tabs -->
   <nav class="tabs">
-    <a href="parent.html"><div>👨‍👩‍👧<span>Parent</span></div></a>
-    <a href="child.html"><div>🧒<span>Chores</span></div></a>
-    <a href="wallet.html" class="active"><div>💳<span>Wallet</span></div></a>
+    <a href="parent.html"><div><span>Parent</span></div></a>
+    <a href="child.html"><div><span>Chores</span></div></a>
+    <a href="wallet.html" class="active"><div><span>Wallet</span></div></a>
   </nav>
 
-<script>
-const KEY_BAL="finchild_wallet", KEY_GOALS="finchild_goals", KEY_HISTORY="finchild_history";
-const $=s=>document.querySelector(s);
-const escapeHtml=s=>String(s).replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
-const balance=()=>parseFloat(localStorage.getItem(KEY_BAL)||"0");
-const setBalance=x=>localStorage.setItem(KEY_BAL,String(Number(x).toFixed(2)));
-const goals=()=>JSON.parse(localStorage.getItem(KEY_GOALS)||"[]");
-const saveGoals=g=>localStorage.setItem(KEY_GOALS,JSON.stringify(g));
-const historyLog=()=>JSON.parse(localStorage.getItem(KEY_HISTORY)||"[]");
-const pushHistory=e=>{const h=historyLog();h.unshift({...e,at:new Date().toISOString()});localStorage.setItem(KEY_HISTORY,JSON.stringify(h.slice(0,100)));};
-const note=t=>{$("#msg").textContent=t; setTimeout(()=>$("#msg").textContent="",1500);};
-
-function addGoal(){
-  const name=$("#gname").value.trim();
-  const tgt=parseFloat($("#gtarget").value||"0");
-  if(!name||isNaN(tgt)||tgt<=0) return note("Enter name + positive target.");
-  const g=goals(); g.push({id:crypto.randomUUID(), name, target:parseFloat(tgt.toFixed(2)), saved:0}); saveGoals(g);
-  $("#gname").value=""; $("#gtarget").value=""; render(); note("Goal added ✅");
-}
-function allocate(id){
-  const amt=parseFloat(prompt("How much to allocate?")||"0");
-  if(isNaN(amt)||amt<=0) return;
-  if(amt>balance()) return alert("Not enough balance.");
-  const g=goals(); const i=g.findIndex(x=>x.id===id); if(i<0) return;
-  g[i].saved=parseFloat((g[i].saved+amt).toFixed(2)); saveGoals(g);
-  setBalance(balance()-amt); pushHistory({type:"allocate",goal:g[i].name,amount:amt}); render();
-}
-function removeGoal(id){ if(!confirm("Delete this goal?")) return; saveGoals(goals().filter(x=>x.id!==id)); render(); }
-function clearGoals(){ if(confirm("Clear all goals?")){ saveGoals([]); render(); } }
-
-function render(){
-  $("#bal").textContent=balance().toFixed(2);
-  const wrap=$("#goals"); wrap.innerHTML="";
-  goals().forEach(g=>{
-    const pct=Math.min(100,Math.round((g.saved/g.target)*100||0));
-    const div=document.createElement("div"); div.className="goal";
-    div.innerHTML=`
-      <div style="flex:1">
-        <div><b>${escapeHtml(g.name)}</b> — $${g.saved.toFixed(2)} / $${g.target.toFixed(2)} (${pct}%)</div>
-        <div class="bar"><div class="fill" style="width:${pct}%"></div></div>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn" onclick="allocate('${g.id}')">Allocate</button>
-        <button class="btn-danger" onclick="removeGoal('${g.id}')">Delete</button>
-      </div>`;
-    wrap.appendChild(div);
-  });
-
-  const hist=historyLog();
-  $("#history").innerHTML = hist.length
-    ? "<ul style='margin:0;padding-left:16px'>" + hist.map(h=>{
-        const dt=new Date(h.at).toLocaleString();
-        if(h.type==="allocate") return `<li>🎯 ${dt}: Allocated $${Number(h.amount).toFixed(2)} to “${escapeHtml(h.goal)}”</li>`;
-        if(h.type==="credit")   return `<li>💸 ${dt}: +$${Number(h.amount).toFixed(2)} credited (chore)</li>`;
-        return `<li>${dt}: ${escapeHtml(h.type||"event")}</li>`;
-      }).join("") + "</ul>"
-    : "No history yet.";
-}
-$("#addGoal").onclick=addGoal;
-$("#clearGoals").onclick=clearGoals;
-render();
-</script>
 </body>
 </html>
