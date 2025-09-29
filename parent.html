@@ -18,7 +18,6 @@
     padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right))
             calc(80px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
   }
-  h1{margin:0 0 12px; font-size:clamp(20px,4.5vw,28px)}
   .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin:12px 0}
   .row{display:flex; gap:10px; flex-wrap:wrap}
   input{font-size:16px; padding:14px 12px; border-radius:12px; border:1px solid var(--line); background:transparent; color:var(--fg); flex:1 1 160px}
@@ -38,13 +37,11 @@
 </style>
 </head>
 <body>
-  <h1>👨‍👩‍👧 West-Kids — Parent</h1>
 
   <div class="card">
     <h3 style="margin:0 0 8px">Add a chore</h3>
     <div class="row">
       <input id="task" placeholder="e.g., Clean room" />
-      <input id="reward" type="number" step="0.01" placeholder="Reward (e.g., 5.00)" />
       <button class="btn" id="addBtn">Add</button>
     </div>
     <p class="muted" id="msg"></p>
@@ -53,7 +50,7 @@
   <div class="card">
     <h3 style="margin:0 0 8px">Chore list</h3>
     <table>
-      <thead><tr><th>Task</th><th>Reward</th><th>Status</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Task</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody id="tbody"></tbody>
     </table>
     <div class="row" style="margin-top:12px">
@@ -63,9 +60,9 @@
 
   <!-- bottom tabs -->
   <nav class="tabs">
-    <a href="parent.html" class="active"><div>👨‍👩‍👧<span>Parent</span></div></a>
-    <a href="child.html"><div>🧒<span>Chores</span></div></a>
-    <a href="wallet.html"><div>💳<span>Wallet</span></div></a>
+    <a href="parent.html" class="active"><div><span>Parent</span></div></a>
+    <a href="child.html"><div><span>Chores</span></div></a>
+    <a href="wallet.html"><div><span>Wallet</span></div></a>
   </nav>
 
 <script>
@@ -78,10 +75,9 @@ const note=t=>{$("#msg").textContent=t; setTimeout(()=>$("#msg").textContent="",
 
 function addChore(){
   const task=$("#task").value.trim();
-  const reward=parseFloat($("#reward").value||"0");
-  if(!task || isNaN(reward)||reward<=0) return note("Enter task + positive reward.");
-  const cs=load(); cs.push({id:crypto.randomUUID(),task,reward:parseFloat(reward.toFixed(2)),completed:false});
-  save(cs); $("#task").value=""; $("#reward").value=""; render(); note("Added ✅");
+  if(!task) return note("Enter a task.");
+  const cs=load(); cs.push({id:crypto.randomUUID(),task,completed:false});
+  save(cs); $("#task").value=""; render(); note("Added ✅");
 }
 function toggleComplete(id){ const cs=load(); const i=cs.findIndex(c=>c.id===id); if(i<0)return; cs[i].completed=!cs[i].completed; save(cs); render(); }
 function removeChore(id){ save(load().filter(c=>c.id!==id)); render(); }
@@ -91,8 +87,8 @@ function render(){
   const tb=$("#tbody"); tb.innerHTML="";
   load().forEach(c=>{
     const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${escapeHtml(c.task)}</td><td>$${c.reward.toFixed(2)}</td>
-      <td>${c.completed?"✅ Done":"⏳"}</td>
+    tr.innerHTML=`<td>${escapeHtml(c.task)}</td>
+      <td>${c.completed?"Done":"⏳"}</td>
       <td>
         <button class="btn-ghost" onclick="toggleComplete('${c.id}')">${c.completed?"Undo":"Mark done"}</button>
         <button class="btn-ghost" onclick="removeChore('${c.id}')">Delete</button>
