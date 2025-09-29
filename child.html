@@ -2,14 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>West-Kids — My Chores</title>
+<title>Chores</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <meta name="color-scheme" content="light dark" />
 <style>
-  :root{ --brand:#e60000; --bg:#fff; --fg:#0f172a; --muted:#667085; --card:#f9fafb; --line:#e5e7eb; --ok:#16a34a; }
+  :root{ --brand:#6a0dad; --bg:#fff; --fg:#0f172a; --muted:#667085; --card:#f9fafb; --line:#e5e7eb; }
   @media (prefers-color-scheme: dark){
     :root{ --bg:#0b0f18; --fg:#e5e7eb; --muted:#98a2b3; --card:#111827; --line:#1f2937; }
   }
+  html,body{height:100%}
   body{
     margin:0; background:var(--bg); color:var(--fg);
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -17,12 +18,7 @@
     padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right))
             calc(80px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
   }
-  h1{margin:0 0 12px; font-size:clamp(20px,4.5vw,28px)}
   .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin:12px 0}
-  .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
-  button{font-size:16px; padding:14px 18px; border-radius:12px; border:none; min-height:44px; cursor:pointer}
-  .btn{background:var(--brand); color:#fff}
-  .btn-done{background:var(--ok); color:#fff}
   table{width:100%; border-collapse:collapse}
   th,td{padding:12px 8px; border-bottom:1px solid var(--line); font-size:16px}
   /* tabs */
@@ -35,19 +31,11 @@
 </style>
 </head>
 <body>
-  <h1>🧒 West-Kids — My Chores</h1>
-
-  <div class="card">
-    <div class="row">
-      <div><b>Wallet:</b> $<span id="bal">0.00</span></div>
-      <a href="wallet.html" style="text-decoration:none"><button class="btn">Wallet & Goals</button></a>
-    </div>
-  </div>
 
   <div class="card">
     <h3 style="margin:0 0 8px">To do</h3>
     <table>
-      <thead><tr><th>Task</th><th>Reward</th><th></th></tr></thead>
+      <thead><tr><th>Task</th><th>Reward</th></tr></thead>
       <tbody id="todo"></tbody>
     </table>
   </div>
@@ -56,43 +44,31 @@
     <h3 style="margin:0 0 8px">Completed</h3>
     <table>
       <thead><tr><th>Task</th><th>Reward</th></tr></thead>
-      <tbody id="done"></tbody>
+      <tbody id="completed"></tbody>
     </table>
   </div>
 
   <!-- bottom tabs -->
   <nav class="tabs">
-    <a href="parent.html"><div>👨‍👩‍👧<span>Parent</span></div></a>
-    <a href="child.html" class="active"><div>🧒<span>Chores</span></div></a>
-    <a href="wallet.html"><div>💳<span>Wallet</span></div></a>
+    <a href="parent.html"><div><span>Parent</span></div></a>
+    <a href="child.html" class="active"><div><span>Chores</span></div></a>
+    <a href="wallet.html"><div><span>Wallet</span></div></a>
   </nav>
 
 <script>
-const KEY_CHORES="finchild_chores", KEY_BAL="finchild_wallet";
+const KEY_CHORES="finchild_chores";
 const $=s=>document.querySelector(s);
-const escapeHtml=s=>String(s).replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
-const chores=()=>JSON.parse(localStorage.getItem(KEY_CHORES)||"[]");
-const save=x=>localStorage.setItem(KEY_CHORES,JSON.stringify(x));
-const balance=()=>parseFloat(localStorage.getItem(KEY_BAL)||"0");
-const setBalance=x=>localStorage.setItem(KEY_BAL,String(Number(x).toFixed(2)));
 
-function complete(id){
-  const cs=chores(); const i=cs.findIndex(c=>c.id===id); if(i<0) return;
-  if(!cs[i].completed){ cs[i].completed=true; setBalance(balance()+parseFloat(cs[i].reward)); }
-  save(cs); render();
-}
+function load(){ return JSON.parse(localStorage.getItem(KEY_CHORES)||"[]"); }
+
 function render(){
-  $("#bal").textContent=balance().toFixed(2);
-  const todo=$("#todo"), done=$("#done"); todo.innerHTML=done.innerHTML="";
-  chores().forEach(c=>{
-    const row=`<td>${escapeHtml(c.task)}</td><td>$${Number(c.reward).toFixed(2)}</td>`;
-    if(!c.completed){
-      const tr=document.createElement("tr");
-      tr.innerHTML=row+`<td><button class="btn-done" onclick="complete('${c.id}')">Mark done</button></td>`;
-      todo.appendChild(tr);
-    }else{
-      const tr=document.createElement("tr"); tr.innerHTML=row; done.appendChild(tr);
-    }
+  const todo=$("#todo"), completed=$("#completed");
+  todo.innerHTML=""; completed.innerHTML="";
+  load().forEach(c=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${c.task}</td><td>$${c.reward?c.reward.toFixed(2):""}</td>`;
+    if(c.completed){ completed.appendChild(tr); }
+    else{ todo.appendChild(tr); }
   });
 }
 render();
